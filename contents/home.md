@@ -1,4 +1,4 @@
-[![senli1073](https://img.shields.io/badge/Blacad-github-blue?logo=github)](https://github.com/Blacad)
+[![Blacad](https://img.shields.io/badge/Blacad-github-blue?logo=github)](https://github.com/Blacad)
 
 He is currently pursuing a bachelor's degree at Zhejiang University.
 
