@@ -1,65 +1,53 @@
+const CONTENT_DIRECTORY = 'contents/';
+const CONFIG_FILE = 'config.yml';
+const SECTION_NAMES = ['home', 'publications', 'awards'];
 
+function setConfigValues(config) {
+    Object.entries(config).forEach(([id, value]) => {
+        const element = document.getElementById(id);
 
-const content_dir = 'contents/'
-const config_file = 'config.yml'
-const section_names = ['home', 'publications', 'awards']
+        if (!element) {
+            return;
+        }
 
-
-window.addEventListener('DOMContentLoaded', event => {
-
-    // Activate Bootstrap scrollspy on the main nav element
-    const mainNav = document.body.querySelector('#mainNav');
-    if (mainNav) {
-        new bootstrap.ScrollSpy(document.body, {
-            target: '#mainNav',
-            offset: 74,
-        });
-    };
-
-    // Collapse responsive navbar when toggler is visible
-    const navbarToggler = document.body.querySelector('.navbar-toggler');
-    const responsiveNavItems = [].slice.call(
-        document.querySelectorAll('#navbarResponsive .nav-link')
-    );
-    responsiveNavItems.map(function (responsiveNavItem) {
-        responsiveNavItem.addEventListener('click', () => {
-            if (window.getComputedStyle(navbarToggler).display !== 'none') {
-                navbarToggler.click();
-            }
-        });
+        if (id === 'copyright-text') {
+            element.innerHTML = value;
+        } else {
+            element.textContent = value;
+        }
     });
+}
 
+async function loadText(path) {
+    const response = await fetch(path);
 
-    // Yaml
-    fetch(content_dir + config_file)
-        .then(response => response.text())
-        .then(text => {
-            const yml = jsyaml.load(text);
-            Object.keys(yml).forEach(key => {
-                try {
-                    document.getElementById(key).innerHTML = yml[key];
-                } catch {
-                    console.log("Unknown id and value: " + key + "," + yml[key].toString())
-                }
+    if (!response.ok) {
+        throw new Error(`Unable to load ${path} (${response.status})`);
+    }
 
-            })
-        })
-        .catch(error => console.log(error));
+    return response.text();
+}
 
+async function loadConfig() {
+    const yaml = await loadText(CONTENT_DIRECTORY + CONFIG_FILE);
+    setConfigValues(jsyaml.load(yaml));
+}
 
-    // Marked
-    marked.use({ mangle: false, headerIds: false })
-    section_names.forEach((name, idx) => {
-        fetch(content_dir + name + '.md')
-            .then(response => response.text())
-            .then(markdown => {
-                const html = marked.parse(markdown);
-                document.getElementById(name + '-md').innerHTML = html;
-            }).then(() => {
-                // MathJax
-                MathJax.typeset();
-            })
-            .catch(error => console.log(error));
-    })
+async function loadSection(name) {
+    const markdown = await loadText(`${CONTENT_DIRECTORY}${name}.md`);
+    const target = document.getElementById(`${name}-md`);
+    target.innerHTML = marked.parse(markdown);
+}
 
-}); 
+window.addEventListener('DOMContentLoaded', async () => {
+    marked.use({ mangle: false, headerIds: false });
+
+    const tasks = [loadConfig(), ...SECTION_NAMES.map(loadSection)];
+    const results = await Promise.allSettled(tasks);
+
+    results.forEach((result) => {
+        if (result.status === 'rejected') {
+            console.error(result.reason);
+        }
+    });
+});
